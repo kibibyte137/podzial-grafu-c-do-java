@@ -5,12 +5,10 @@ import java.awt.*;
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.Line2D;
 import java.io.*;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
+import java.util.*;
 import java.awt.event.*;
 import java.awt.geom.AffineTransform;
-import java.util.Set;
+import java.util.List;
 
 public class interfejs extends JFrame {
     private GraphPanel graphPanel;
@@ -43,8 +41,11 @@ public class interfejs extends JFrame {
         // Menu "Wczytaj"
         JMenu loadMenu = new JMenu("Wczytaj");
         JMenuItem loadCsrrgItem = new JMenuItem("CSRRG");
+        JMenuItem loadTxtItem = new JMenuItem("TXT z podziałem");
         loadCsrrgItem.addActionListener(e -> loadGraph("csrrg"));
+        loadTxtItem.addActionListener(e -> loadGraph("txt"));
         loadMenu.add(loadCsrrgItem);
+        loadMenu.add(loadTxtItem);
 
         // Menu "Zapisz"
         JMenu saveMenu = new JMenu("Zapisz");
@@ -83,12 +84,18 @@ public class interfejs extends JFrame {
                 int totalGroupElements = currentGraph.groups.size();
                 currentGraph.calculateDegrees(nodeCount, groupCount, totalGroupElements);
 
-                JOptionPane.showMessageDialog(this,
-                        "Graf został wczytany pomyślnie!\nLiczba węzłów: " + nodeCount,
-                        "Sukces", JOptionPane.INFORMATION_MESSAGE);
+                String message = "Graf został wczytany pomyślnie!\nLiczba węzłów: " + nodeCount;
 
-                // Enable partition button
-                ((JButton)controlPanel.getComponent(2)).setEnabled(true);
+                if (extension.equals("txt") && currentAssignments != null) {
+                    message += "\nWczytano podział na " + currentParts + " grup";
+                }
+
+                JOptionPane.showMessageDialog(this, message, "Sukces", JOptionPane.INFORMATION_MESSAGE);
+
+                // Enable partition button tylko jeśli nie wczytano gotowego podziału
+                ((JButton)controlPanel.getComponent(2)).setEnabled(currentAssignments == null);
+
+                graphPanel.repaint();
             } catch (IOException e) {
                 JOptionPane.showMessageDialog(this,
                         "Błąd podczas wczytywania pliku: " + e.getMessage(),
@@ -313,9 +320,28 @@ public class interfejs extends JFrame {
                 graph.groupPointers.add(Integer.parseInt(s.trim()));
             }
 
+            // Dodatkowa obsługa plików TXT z przypisaniami grup
+            if (filename.toLowerCase().endsWith(".txt")) {
+                // Pomijamy pustą linię
+                reader.readLine();
+
+                // Czytamy przypisania grup
+                line = reader.readLine();
+                if (line != null && !line.trim().isEmpty()) {
+                    String[] assignments = line.trim().split("\\s+");
+                    currentAssignments = new int[assignments.length];
+                    for (int i = 0; i < assignments.length; i++) {
+                        currentAssignments[i] = Integer.parseInt(assignments[i]);
+                    }
+                    currentParts = Arrays.stream(currentAssignments).max().getAsInt() + 1;
+                    graph.setGroupAssignments(currentAssignments);
+                }
+            }
+
             return graph;
         }
     }
+
 
     private void saveAssignmentsFile(String filename, List<Integer> assignments, int parts) throws IOException {
         try (PrintWriter writer = new PrintWriter(new FileWriter(filename))) {
