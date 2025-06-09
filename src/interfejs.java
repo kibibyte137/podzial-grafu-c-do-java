@@ -179,7 +179,6 @@ public class interfejs extends JFrame {
         scrollPane.setPreferredSize(new Dimension(600, 400));
         mainPanel.add(scrollPane, BorderLayout.CENTER);
 
-
         // Panel kontrolny
         controlPanel = new JPanel();
         controlPanel.setLayout(new BoxLayout(controlPanel, BoxLayout.Y_AXIS));
@@ -271,6 +270,7 @@ public class interfejs extends JFrame {
         }
     }
 
+    // Methods from Main class
     private Graph readInputFile(String filename) throws IOException {
         try (BufferedReader reader = new BufferedReader(new FileReader(filename))) {
             String line;
@@ -429,32 +429,11 @@ public class interfejs extends JFrame {
             g2d.setTransform(oldTransform);
         }
 
-        private boolean areNodesConnected(int node1, int node2) {
-            // Sprawdź czy wierzchołki są w tej samej grupie
-            for (int g = 0; g < currentGraph.groupPointers.size() - 1; g++) {
-                int groupStart = currentGraph.groupPointers.get(g);
-                int groupEnd = currentGraph.groupPointers.get(g + 1);
-
-                boolean found1 = false;
-                boolean found2 = false;
-
-                for (int j = groupStart; j < groupEnd; j++) {
-                    int member = currentGraph.groups.get(j);
-                    if (member == node1) found1 = true;
-                    if (member == node2) found2 = true;
-
-                    if (found1 && found2) return true;
-                }
-            }
-            return false;
-        }
-
         private void drawGraph(Graphics2D g2d) {
             int nodeCount = currentGraph.nodeIndices.size();
             int gridSize = (int) Math.ceil(Math.sqrt(nodeCount));
             int nodeDiameter = 30;
             int margin = 20;
-            int nodeRadius = nodeDiameter / 2;
 
             int totalWidth = gridSize * (nodeDiameter + margin) + margin;
             int totalHeight = gridSize * (nodeDiameter + margin) + margin;
@@ -463,30 +442,8 @@ public class interfejs extends JFrame {
                     (int)(totalWidth * scale),
                     (int)(totalHeight * scale)));
 
-            // Najpierw rysuj połączenia
-            g2d.setColor(Color.BLACK);
-            g2d.setStroke(new BasicStroke(1.0f)); // Cienkie linie
-
-            for (int i = 0; i < nodeCount; i++) {
-                for (int j = i + 1; j < nodeCount; j++) {
-                    if (areNodesConnected(i, j)) {
-                        int row1 = i / gridSize;
-                        int col1 = i % gridSize;
-                        int x1 = margin + col1 * (nodeDiameter + margin) + nodeRadius;
-                        int y1 = margin + row1 * (nodeDiameter + margin) + nodeRadius;
-
-                        int row2 = j / gridSize;
-                        int col2 = j % gridSize;
-                        int x2 = margin + col2 * (nodeDiameter + margin) + nodeRadius;
-                        int y2 = margin + row2 * (nodeDiameter + margin) + nodeRadius;
-
-                        g2d.drawLine(x1, y1, x2, y2);
-                    }
-                }
-            }
-
-            // Potem rysuj wierzchołki (żeby były na wierzchu linii)
             Color[] partColors = generateColors(currentParts);
+
             for (int i = 0; i < nodeCount; i++) {
                 int row = i / gridSize;
                 int col = i % gridSize;
