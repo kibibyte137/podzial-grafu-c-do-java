@@ -3,10 +3,14 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
 import java.awt.geom.Ellipse2D;
+import java.awt.geom.Line2D;
 import java.io.*;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.awt.event.*;
 import java.awt.geom.AffineTransform;
+import java.util.Set;
 
 public class interfejs extends JFrame {
     private GraphPanel graphPanel;
@@ -374,6 +378,8 @@ public class interfejs extends JFrame {
         private double translateX = 0;
         private double translateY = 0;
         private Point dragStart;
+        private List<Point> nodePositions; // Cache pozycji węzłów
+        private List<Line2D> connections; // Cache połączeń
 
         public GraphPanel() {
             addMouseListener(new MouseAdapter() {
@@ -435,21 +441,69 @@ public class interfejs extends JFrame {
             int nodeDiameter = 30;
             int margin = 20;
 
-            int totalWidth = gridSize * (nodeDiameter + margin) + margin;
-            int totalHeight = gridSize * (nodeDiameter + margin) + margin;
-
-            setPreferredSize(new Dimension(
-                    (int)(totalWidth * scale),
-                    (int)(totalHeight * scale)));
-
-            Color[] partColors = generateColors(currentParts);
-
+            // Oblicz pozycje węzłów i zapisz w cache
+            nodePositions = new ArrayList<>(nodeCount);
             for (int i = 0; i < nodeCount; i++) {
                 int row = i / gridSize;
                 int col = i % gridSize;
-
                 int x = margin + col * (nodeDiameter + margin);
                 int y = margin + row * (nodeDiameter + margin);
+                nodePositions.add(new Point(x + nodeDiameter/2, y + nodeDiameter/2));
+            }
+
+            // Rysuj połączenia tylko jeśli nie ma ich w cache lub graf się zmienił
+            if (connections == null) {
+                connections = new ArrayList<>();
+                Set<String> drawnConnections = new HashSet<>(); // Aby uniknąć duplikatów
+
+                // Znajdź wszystkie połączenia między węzłami
+                for (int i = 0; i < nodeCount; i++) {
+                    // Sprawdź grupy, do których należy węzeł
+                    for (int g = 0; g < currentGraph.groupPointers.size() - 1; g++) {
+                        int groupStart = currentGraph.groupPointers.get(g);
+                        int groupEnd = currentGraph.groupPointers.get(g + 1);
+
+                        // Jeśli węzeł i jest w tej grupie
+                        boolean nodeInGroup = false;
+                        for (int j = groupStart; j < groupEnd; j++) {
+                            if (currentGraph.groups.get(j) == i) {
+                                nodeInGroup = true;
+                                break;
+                            }
+                        }
+
+                        if (nodeInGroup) {
+                            // Dodaj połączenia do wszystkich innych węzłów w grupie
+                            for (int j = groupStart; j < groupEnd; j++) {
+                                int neighbor = currentGraph.groups.get(j);
+                                if (neighbor != i) {
+                                    String connectionKey = Math.min(i, neighbor) + "-" + Math.max(i, neighbor);
+                                    if (!drawnConnections.contains(connectionKey)) {
+                                        Point p1 = nodePositions.get(i);
+                                        Point p2 = nodePositions.get(neighbor);
+                                        connections.add(new Line2D.Double(p1, p2));
+                                        drawnConnections.add(connectionKey);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Rysuj połączenia
+            g2d.setColor(Color.BLACK);
+            for (Line2D line : connections) {
+                g2d.draw(line);
+            }
+
+            Color[] partColors = generateColors(currentParts);
+
+            // Rysuj węzły
+            for (int i = 0; i < nodeCount; i++) {
+                Point pos = nodePositions.get(i);
+                int x = pos.x - nodeDiameter/2;
+                int y = pos.y - nodeDiameter/2;
 
                 int part = currentAssignments != null ? currentAssignments[i] : 0;
                 g2d.setColor(partColors[part]);
